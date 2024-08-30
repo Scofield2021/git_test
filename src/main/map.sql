@@ -300,8 +300,81 @@ from (
 
 
 -----------------------------------------------------
-
-
+select
+    uuid() as uuid,
+    now() as ts,
+    dt,
+    ota_version,
+    hard_ver,
+    X_Map_001_0009_time,
+    X_Map_001_0008_time
+from (
+         select
+             t_31.dt,
+             ota_version,
+             hard_ver,
+             t_31.record_id,
+             t_9.target_time as X_Map_001_0009_time,
+             t_8.target_time as X_Map_001_0008_time
+         from (
+                  select
+                      *,
+                      get_json_object(get_json_object(content, '$.data_json'), '$.record_id') AS record_id
+                  from ods_ssp_cloud_uploader_track_all_offline_di_prod
+                  where dt = '{-dt}'
+                    and event_key = 'vehvoice_002_0031'
+                    and get_json_object(get_json_object(get_json_object(get_json_object(content, '$.data_json'), '$.voice_value'), '$.semantic_list[0]'), '$.command') = 'navigation/search'
+                    and get_json_object(get_json_object(get_json_object(get_json_object(get_json_object(content, '$.data_json'), '$.voice_value'), '$.semantic_list[0]'), '$.content'), '$.target') = 'NAVI_NORMAL'
+              ) t_31
+                  join (
+             select
+                 vin,
+                 create_time,
+                 receive_time,
+                 collect_time,
+                 veh_model,
+                 veh_config,
+                 veh_level,
+                 content,
+                 event_key,
+                 get_json_object(get_json_object(content, '$.data_json'), '$.record_id') AS record_id,
+                 get_json_object(content, '$.target_time') as target_time,
+                 dt
+             from ods_ssp_cloud_uploader_track_all_offline_di_prod
+             where dt = '{-dt}'
+               and event_key = 'X_Map_001_0009'
+               and get_json_object(get_json_object(content, '$.data_json'), '$.record_id') IS NOT NULL
+         ) t_9 on t_31.record_id = t_9.record_id
+                  join (
+             select
+                 vin,
+                 create_time,
+                 receive_time,
+                 collect_time,
+                 veh_model,
+                 veh_config,
+                 veh_level,
+                 content,
+                 event_key,
+                 get_json_object(get_json_object(content, '$.data_json'), '$.record_id') AS record_id,
+                 get_json_object(content, '$.target_time') as target_time,
+                 dt
+             from ods_ssp_cloud_uploader_track_all_offline_di_prod
+             where dt = '{-dt}'
+               and event_key = 'X_Map_001_0008'
+               and get_json_object(get_json_object(content, '$.data_json'), '$.record_id') IS NOT NULL
+         ) t_8 on t_31.record_id = t_8.record_id
+                  left join (
+             SELECT
+                 vin,
+                 is_user_vehicle,
+                 ota_version,
+                 year_model,
+                 CASE WHEN substr(year_model, 1, 4) < '2024' THEN 'SS2' ELSE 'SS3' END AS hard_ver
+             from dm_vom_vehvoice_basic_df
+             where dt = '{-dt}'
+         ) t_vom on t_31.vin = t_vom.vin
+)
 
 
 
